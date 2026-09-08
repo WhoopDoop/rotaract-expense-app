@@ -1,11 +1,16 @@
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("com.google.gms.google-services")
     id("dev.flutter.flutter-gradle-plugin")
+    
 }
 
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
+}
 android {
-    namespace = "com.example.rotaract_expense_app"
+    namespace = "com.garvit.rotaract_expense_app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

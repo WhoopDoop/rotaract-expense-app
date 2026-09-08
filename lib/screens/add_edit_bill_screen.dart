@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/bill.dart';
 import '../providers/bill_provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/drive_service.dart';
 
 class AddEditBillScreen extends StatefulWidget {
   final String projectId;
@@ -24,6 +26,8 @@ class _AddEditBillScreenState extends State<AddEditBillScreen> {
   late TextEditingController _qtyController;
   late TextEditingController _billNoController;
   String? _imagePath;
+  String? _driveFileId;
+  bool _isUploading = false;
 
   bool get _isEditing => widget.existingBill != null;
 
@@ -36,6 +40,7 @@ class _AddEditBillScreenState extends State<AddEditBillScreen> {
     _priceController = TextEditingController(text: b?.price.toString() ?? '');
     _qtyController = TextEditingController(text: b?.quantity.toString() ?? '1');
     _imagePath = b?.imagePath;
+    _driveFileId = b?.driveFileId;
 
     final nextNo = context.read<BillProvider>().nextBillNo(widget.projectId);
     _billNoController = TextEditingController(text: (b?.billNo ?? nextNo).toString());
@@ -44,31 +49,61 @@ class _AddEditBillScreenState extends State<AddEditBillScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
     if (picked != null) {
-      setState(() => _imagePath = picked.path);
+      setState(() {
+        _imagePath = picked.path;
+        _driveFileId = null; // force re-upload of the new photo
+      });
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final billProvider = context.read<BillProvider>();
-    final bill = Bill(
-      id: widget.existingBill?.id ?? const Uuid().v4(),
-      projectId: widget.projectId,
-      category: _categoryController.text.trim(),
-      item: _itemController.text.trim(),
-      price: double.parse(_priceController.text),
-      quantity: double.parse(_qtyController.text),
-      billNo: int.parse(_billNoController.text),
-      imagePath: _imagePath,
-    );
+    setState(() => _isUploading = true);
 
-    if (_isEditing) {
-      billProvider.updateBill(bill);
-    } else {
-      billProvider.addBill(bill);
+    try {
+      // If a new local image was picked (and it's different from what's already
+      // uploaded), upload it to Drive before saving the bill.
+      if (_imagePath != null && _driveFileId == null) {
+        final auth = context.read<AuthProvider>();
+        final driveService = DriveService(auth.signInInstance);
+        final fileName =
+            'bill_${_billNoController.text}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        _driveFileId = await driveService.uploadImage(
+          File(_imagePath!),
+          fileName: fileName,
+        );
+      }
+
+      final billProvider = context.read<BillProvider>();
+      final bill = Bill(
+        id: widget.existingBill?.id ?? const Uuid().v4(),
+        projectId: widget.projectId,
+        category: _categoryController.text.trim(),
+        item: _itemController.text.trim(),
+        price: double.parse(_priceController.text),
+        quantity: double.parse(_qtyController.text),
+        billNo: int.parse(_billNoController.text),
+        imagePath: _imagePath,
+        driveFileId: _driveFileId,
+      );
+
+      if (_isEditing) {
+        billProvider.updateBill(bill);
+      } else {
+        billProvider.addBill(bill);
+      }
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
-    Navigator.pop(context);
   }
 
   // Suggest previously used categories in this project for quick entry.
@@ -172,7 +207,16 @@ class _AddEditBillScreenState extends State<AddEditBillScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            FilledButton(onPressed: _save, child: const Text('Save Bill')),
+            FilledButton(
+              onPressed: _isUploading ? null : _save,
+              child: _isUploading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Save Bill'),
+            ),
           ],
         ),
       ),

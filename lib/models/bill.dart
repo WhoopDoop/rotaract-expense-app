@@ -7,6 +7,7 @@ class Bill {
   final double quantity;
   final int billNo;
   final String? imagePath; // local file path to the photo
+  final String? driveFileId;
 
   Bill({
     required this.id,
@@ -17,6 +18,7 @@ class Bill {
     required this.quantity,
     required this.billNo,
     this.imagePath,
+    this.driveFileId,
   });
 
   double get amount => price * quantity;
@@ -31,6 +33,7 @@ class Bill {
       'quantity': quantity,
       'billNo': billNo,
       'imagePath': imagePath,
+      'driveFileId' : driveFileId,
     };
   }
 
@@ -44,6 +47,7 @@ class Bill {
       quantity: (map['quantity'] as num).toDouble(),
       billNo: map['billNo'],
       imagePath: map['imagePath'],
+      driveFileId: map['driveFileId'],
     );
   }
 
@@ -54,6 +58,7 @@ class Bill {
     double? quantity,
     int? billNo,
     String? imagePath,
+    String? driveFileId,
   }) {
     return Bill(
       id: id,
@@ -64,6 +69,7 @@ class Bill {
       quantity: quantity ?? this.quantity,
       billNo: billNo ?? this.billNo,
       imagePath: imagePath ?? this.imagePath,
+      driveFileId: driveFileId ?? this.driveFileId,
     );
   }
 }
