@@ -2,10 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/project_provider.dart';
 import 'project_detail_screen.dart';
+import '../providers/auth_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+    void _confirmSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text('You can sign back in anytime. Your saved reports stay on this device.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AuthProvider>().signOut();
+            },
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   void _createProject(BuildContext context) {
     final controller = TextEditingController();
     showDialog(
@@ -48,7 +72,16 @@ class HomeScreen extends StatelessWidget {
     final projects = context.watch<ProjectProvider>().projects;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Expense Reports')),
+      appBar: AppBar(
+        title: const Text('Expense Reports'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign out',
+            onPressed: () => _confirmSignOut(context),
+          ),
+        ],
+      ),
       body: projects.isEmpty
           ? const Center(child: Text('No projects yet. Tap + to create one.'))
           : ListView.builder(

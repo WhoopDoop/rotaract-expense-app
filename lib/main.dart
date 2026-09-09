@@ -22,9 +22,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ProjectProvider()),
-        ChangeNotifierProvider(create: (_) => BillProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BillProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ProjectProvider>(
+          create: (_) => ProjectProvider(),
+          update: (_, auth, projectProvider) {
+            projectProvider!.updateCurrentUser(auth.userId);
+            return projectProvider;
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'Rotaract Expense Report',

@@ -9,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
   GoogleSignInAccount? _user;
   GoogleSignInAccount? get user => _user;
   bool get isSignedIn => _user != null;
+  String? get userId => _user?.id;
 
   AuthProvider() {
     // Try to sign in silently if the user has signed in before.
