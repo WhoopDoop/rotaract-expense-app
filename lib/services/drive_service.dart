@@ -17,7 +17,6 @@ class DriveService {
     return drive.DriveApi(client);
   }
 
-  // Finds (or creates) a single app folder in the user's Drive to keep things tidy.
   Future<String> _getOrCreateAppFolder(drive.DriveApi api) async {
     final existing = await api.files.list(
       q: "mimeType = 'application/vnd.google-apps.folder' and name = '$_folderName' and trashed = false",
@@ -33,7 +32,8 @@ class DriveService {
     return created.id!;
   }
 
-  /// Uploads an image file to Drive and returns its file ID.
+  /// Uploads an image to Drive, makes it link-viewable (needed so the Docs
+  /// API can embed it later), and returns its file ID.
   Future<String> uploadImage(File imageFile, {required String fileName}) async {
     final api = await _getDriveApi();
     final folderId = await _getOrCreateAppFolder(api);
@@ -43,12 +43,17 @@ class DriveService {
       ..parents = [folderId];
 
     final media = drive.Media(imageFile.openRead(), imageFile.lengthSync());
-
     final uploaded = await api.files.create(fileMetadata, uploadMedia: media);
-    return uploaded.id!;
+    final fileId = uploaded.id!;
+
+    await api.permissions.create(
+      drive.Permission(type: 'anyone', role: 'reader'),
+      fileId,
+    );
+
+    return fileId;
   }
 
-  /// Deletes a previously uploaded file (used when a bill's photo is replaced).
   Future<void> deleteFile(String fileId) async {
     final api = await _getDriveApi();
     try {
@@ -58,7 +63,7 @@ class DriveService {
     }
   }
 
-  /// Direct-view link, handy if you ever want to open the photo in a browser.
-  String viewLink(String fileId) =>
+  /// Publicly embeddable URL, used by the Docs API to fetch the image.
+  String embeddableImageUrl(String fileId) =>
       'https://drive.google.com/uc?id=$fileId';
 }

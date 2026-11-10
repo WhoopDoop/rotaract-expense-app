@@ -1,75 +1,80 @@
+class BillItem {
+  final String item;
+  final double price;
+  final double quantity;
+
+  BillItem({required this.item, required this.price, required this.quantity});
+
+  double get amount => price * quantity;
+
+  Map<String, dynamic> toMap() => {
+        'item': item,
+        'price': price,
+        'quantity': quantity,
+      };
+
+  factory BillItem.fromMap(Map<dynamic, dynamic> map) => BillItem(
+        item: map['item'],
+        price: (map['price'] as num).toDouble(),
+        quantity: (map['quantity'] as num).toDouble(),
+      );
+}
+
 class Bill {
   final String id;
   final String projectId;
   final String category;
-  final String item;
-  final double price;
-  final double quantity;
   final int billNo;
-  final String? imagePath; // local file path to the photo
+  final List<BillItem> items;
+  final String? imagePath;
   final String? driveFileId;
 
   Bill({
     required this.id,
     required this.projectId,
     required this.category,
-    required this.item,
-    required this.price,
-    required this.quantity,
     required this.billNo,
+    required this.items,
     this.imagePath,
     this.driveFileId,
   });
 
-  double get amount => price * quantity;
+  /// Total of all line items on this bill.
+  double get amount => items.fold<double>(0, (sum, i) => sum + i.amount);
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'projectId': projectId,
-      'category': category,
-      'item': item,
-      'price': price,
-      'quantity': quantity,
-      'billNo': billNo,
-      'imagePath': imagePath,
-      'driveFileId' : driveFileId,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'projectId': projectId,
+        'category': category,
+        'billNo': billNo,
+        'items': items.map((i) => i.toMap()).toList(),
+        'imagePath': imagePath,
+        'driveFileId': driveFileId,
+      };
 
   factory Bill.fromMap(Map<dynamic, dynamic> map) {
+    final rawItems = map['items'];
+    final List<BillItem> items;
+    if (rawItems != null) {
+      items = (rawItems as List).map((e) => BillItem.fromMap(e as Map)).toList();
+    } else {
+      // Old format (before multi-item bills): one item stored directly on the bill.
+      items = [
+        BillItem(
+          item: map['item'],
+          price: (map['price'] as num).toDouble(),
+          quantity: (map['quantity'] as num).toDouble(),
+        ),
+      ];
+    }
     return Bill(
       id: map['id'],
       projectId: map['projectId'],
       category: map['category'],
-      item: map['item'],
-      price: (map['price'] as num).toDouble(),
-      quantity: (map['quantity'] as num).toDouble(),
       billNo: map['billNo'],
+      items: items,
       imagePath: map['imagePath'],
       driveFileId: map['driveFileId'],
-    );
-  }
-
-  Bill copyWith({
-    String? category,
-    String? item,
-    double? price,
-    double? quantity,
-    int? billNo,
-    String? imagePath,
-    String? driveFileId,
-  }) {
-    return Bill(
-      id: id,
-      projectId: projectId,
-      category: category ?? this.category,
-      item: item ?? this.item,
-      price: price ?? this.price,
-      quantity: quantity ?? this.quantity,
-      billNo: billNo ?? this.billNo,
-      imagePath: imagePath ?? this.imagePath,
-      driveFileId: driveFileId ?? this.driveFileId,
     );
   }
 }
